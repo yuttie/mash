@@ -10,9 +10,9 @@ import System.IO
 
 
 data Editor a = Editor
-    { source :: Source IO String
-    , pipe :: Conduit String IO a
-    , commands :: Map String (Command a)
+    { edSource :: Source IO String
+    , edPipe :: Conduit String IO a
+    , edCommands :: Map String (Command a)
     }
 
 data Command a = forall b. Show b => Command (Editor a -> Editor b)
@@ -57,9 +57,9 @@ process st@(Editor s p cs) = do
 
 initState :: Editor String
 initState = Editor
-    { source = C.sourceList $ map show ([1..10]::[Int])
-    , pipe = awaitForever yield
-    , commands = stringCommands
+    { edSource = C.sourceList $ map show ([1..10]::[Int])
+    , edPipe = awaitForever yield
+    , edCommands = stringCommands
     }
 
 main :: IO ()
