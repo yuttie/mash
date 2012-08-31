@@ -19,23 +19,23 @@ data Command a = forall b. Show b => Command (Editor a -> Editor b)
 
 -- String commands
 stringCommands :: Map String (Command String)
-stringCommands = Map.fromList [("append", commandAppend1), ("toint", commandToInt)]
+stringCommands = Map.fromList [("append", cmdAppend1), ("toint", cmdToInt)]
 
-commandAppend1 :: Command String
-commandAppend1 = Command $ \(Editor s p cs) -> Editor s (p =$= C.map (++ "1")) cs
+cmdAppend1 :: Command String
+cmdAppend1 = Command $ \(Editor s p cs) -> Editor s (p =$= C.map (++ "1")) cs
 
-commandToInt :: Command String
-commandToInt = Command $ \(Editor s p _) -> Editor s (p =$= C.map read) intCommands
+cmdToInt :: Command String
+cmdToInt = Command $ \(Editor s p _) -> Editor s (p =$= C.map read) intCommands
 
 -- Int commands
 intCommands :: Map String (Command Int)
-intCommands = Map.fromList [("double", commandDouble), ("tostr", commandToStr)]
+intCommands = Map.fromList [("double", cmdDouble), ("tostr", cmdToStr)]
 
-commandDouble :: Command Int
-commandDouble = Command $ \(Editor s p cs) -> Editor s (p =$= C.map (2 *)) cs
+cmdDouble :: Command Int
+cmdDouble = Command $ \(Editor s p cs) -> Editor s (p =$= C.map (2 *)) cs
 
-commandToStr :: Command Int
-commandToStr = Command $ \(Editor s p _) -> Editor s (p =$= C.map show) stringCommands
+cmdToStr :: Command Int
+cmdToStr = Command $ \(Editor s p _) -> Editor s (p =$= C.map show) stringCommands
 
 process :: Show a => Editor a -> IO ()
 process st@(Editor s p cs) = do
