@@ -22,20 +22,24 @@ stringCommands :: Map String (Command String)
 stringCommands = Map.fromList [("append", cmdAppend1), ("toint", cmdToInt)]
 
 cmdAppend1 :: Command String
-cmdAppend1 = Command $ \(Editor s p cs) -> Editor s (p =$= C.map (++ "1")) cs
+cmdAppend1 = Command $ \st -> st { edPipe = edPipe st =$= C.map (++ "1") }
 
 cmdToInt :: Command String
-cmdToInt = Command $ \(Editor s p _) -> Editor s (p =$= C.map read) intCommands
+cmdToInt = Command $ \st -> st { edPipe = edPipe st =$= C.map read
+                               , edCommands = intCommands
+                               }
 
 -- Int commands
 intCommands :: Map String (Command Int)
 intCommands = Map.fromList [("double", cmdDouble), ("tostr", cmdToStr)]
 
 cmdDouble :: Command Int
-cmdDouble = Command $ \(Editor s p cs) -> Editor s (p =$= C.map (2 *)) cs
+cmdDouble = Command $ \st -> st { edPipe = edPipe st =$= C.map (2 *) }
 
 cmdToStr :: Command Int
-cmdToStr = Command $ \(Editor s p _) -> Editor s (p =$= C.map show) stringCommands
+cmdToStr = Command $ \st -> st { edPipe = edPipe st =$= C.map show
+                               , edCommands = stringCommands
+                               }
 
 process :: Show a => Editor a -> IO ()
 process st@(Editor s p cs) = do
