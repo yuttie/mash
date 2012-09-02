@@ -2,7 +2,6 @@
 {-# LANGUAGE Rank2Types #-}
 module Main where
 
-import Control.Monad
 import Data.Conduit
 import qualified Data.Conduit.List as C
 import Data.Map (Map)
@@ -82,4 +81,4 @@ initState = Editor
     }
 
 main :: IO ()
-main = forever $ process initState
+main = process initState
