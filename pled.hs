@@ -65,12 +65,12 @@ process st@(Editor s p gcs ccs) = do
     -- execute a command
     l <- getLine
     case Map.lookup l ccs of
+        Just (CCommand f) -> process $ f st
         Nothing -> case Map.lookup l gcs of
+            Just (GCommand f) -> process $ f st
             Nothing -> do
                 hPutStrLn stderr $ "Unknown command " ++ show l ++ "."
                 process st
-            Just (GCommand f) -> process $ f st
-        Just (CCommand f) -> process $ f st
 
 initState :: Editor String
 initState = Editor
