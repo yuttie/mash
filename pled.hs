@@ -2,6 +2,9 @@
 {-# LANGUAGE Rank2Types #-}
 module Main where
 
+import Control.Concurrent (forkIO)
+import Control.Concurrent.STM
+import Control.Monad (forever)
 import Data.Conduit
 import qualified Data.Conduit.List as C
 import Data.Map (Map)
@@ -52,25 +55,22 @@ cmdToStr = CCommand $ \st -> st { edPipe = edPipe st =$= C.map show
                                , edCtxCommands = stringCommands
                                }
 
-process :: Show a => Editor a -> IO ()
-process st@(Editor s p gcs ccs) = do
-    -- output the current state
-    input <- s $$ C.consume
-    output <- s $= p $$ C.consume
-    putStrLn $ "Input: " ++ show input
-    putStrLn $ "Output: " ++ show output
-    -- prompt
-    putStr "> "
-    hFlush stdout
-    -- execute a command
-    l <- getLine
-    case Map.lookup l ccs of
-        Just (CCommand f) -> process $ f st
-        Nothing -> case Map.lookup l gcs of
-            Just (GCommand f) -> process $ f st
-            Nothing -> do
-                hPutStrLn stderr $ "Unknown command " ++ show l ++ "."
-                process st
+data Message = RunCommand String
+
+data AnySource = forall a. Show a => AnySource (Source IO a)
+
+process :: Show a => TChan Message -> TChan AnySource -> Editor a -> IO ()
+process inp out st@(Editor s p gcs ccs) = do
+    atomically $ writeTChan out $ AnySource (s $= p)
+    msg <- atomically $ readTChan inp
+    case msg of
+        RunCommand c -> case Map.lookup c ccs of
+            Just (CCommand f) -> process inp out $ f st
+            Nothing -> case Map.lookup c gcs of
+                Just (GCommand f) -> process inp out $ f st
+                Nothing -> do
+                    hPutStrLn stderr $ "Unknown command " ++ show c ++ "."
+                    process inp out st
 
 initState :: Editor String
 initState = Editor
@@ -81,4 +81,22 @@ initState = Editor
     }
 
 main :: IO ()
-main = process initState
+main = do
+    inp <- newTChanIO
+    out <- newTChanIO
+
+    _ <- forkIO $ forever $ do
+        -- output the current state
+        AnySource s <- atomically $ readTChan out
+        output <- s $$ C.consume
+        putStrLn $ "Output: " ++ show output
+
+    _ <- forkIO $ process inp out initState
+
+    forever $ do
+        -- prompt
+        putStr "> "
+        hFlush stdout
+        -- execute a command
+        l <- getLine
+        atomically $ writeTChan inp $ RunCommand l
