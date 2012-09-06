@@ -10,6 +10,6 @@ import Manipulator.Core
 
 
 gcmdResetPipeline :: Map String (CCommand String) -> GCommand
-gcmdResetPipeline strCmds = GCommand $ \st -> st { edPipe = awaitForever yield
-                                                 , edCtxCommands = strCmds
+gcmdResetPipeline strCmds = GCommand $ \st -> st { manipPipe = awaitForever yield
+                                                 , manipCtxCommands = strCmds
                                                  }

@@ -1,7 +1,7 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE Rank2Types #-}
 module Manipulator.Core
-    ( Editor(..)
+    ( Manipulator(..)
     , GCommand(..)
     , CCommand(..)
     , Message(..)
@@ -16,23 +16,23 @@ import qualified Data.Map as Map
 import System.IO
 
 
-data Editor a = Editor
-    { edSource :: Source IO String
-    , edPipe :: Conduit String IO a
-    , edCommands :: Map String GCommand
-    , edCtxCommands :: Map String (CCommand a)
+data Manipulator a = Manipulator
+    { manipSource :: Source IO String
+    , manipPipe :: Conduit String IO a
+    , manipCommands :: Map String GCommand
+    , manipCtxCommands :: Map String (CCommand a)
     }
 
-data GCommand = forall b. Show b => GCommand (forall a. Editor a -> Editor b)
+data GCommand = forall b. Show b => GCommand (forall a. Manipulator a -> Manipulator b)
 
-data CCommand a = forall b. Show b => CCommand (Editor a -> Editor b)
+data CCommand a = forall b. Show b => CCommand (Manipulator a -> Manipulator b)
 
 data Message = RunCommand String
 
 data AnySource = forall a. Show a => AnySource (Source IO a)
 
-process :: Show a => TChan Message -> TChan AnySource -> Editor a -> IO ()
-process inp out st@(Editor s p gcs ccs) = do
+process :: Show a => TChan Message -> TChan AnySource -> Manipulator a -> IO ()
+process inp out st@(Manipulator s p gcs ccs) = do
     atomically $ writeTChan out $ AnySource (s $= p)
     msg <- atomically $ readTChan inp
     case msg of
