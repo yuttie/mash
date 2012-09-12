@@ -7,14 +7,23 @@ import Control.Exception.Lifted (bracket, finally)
 import Control.Monad (forever, void, when)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Control (MonadBaseControl, control)
+import Data.ByteString (ByteString)
+import qualified Data.ByteString as B
 import Data.Conduit
+import qualified Data.Conduit.Binary as CB
 import qualified Data.Conduit.List as CL
 import qualified Data.Conduit.Network as CN
+import qualified Data.Conduit.Text as CT
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Data.Maybe (fromMaybe)
+import Data.Serialize (Serialize, get, put, runGetPartial, runPut)
+import qualified Data.Serialize as S
+import Data.Text (Text)
+import qualified Data.Text.IO as T
 import qualified Network.Socket as NS
 import System.Directory (doesFileExist, removeFile)
-import System.IO
+import System.IO (hFlush, hPutStrLn, stderr, stdout)
 
 import Manipulator
 
@@ -78,18 +87,53 @@ runClient fp app = bracket
         let sink = CN.sinkSocket sock
         app src sink
 
-main :: IO ()
-main = do
-    inp <- newTChanIO
-    out <- newTChanIO
+data Event = CommandInput String
 
-    _ <- forkIO $ forever $ do
-        -- output the current state
-        AnySource s <- atomically $ readTChan out
-        output <- s $$ CL.consume
-        putStrLn $ "Output: " ++ show output
+getResponse :: Monad m => GLSink ByteString m (Either String Response)
+getResponse = go $ runGetPartial get
+  where
+    go p = do
+        mbs <- await
+        case p $ fromMaybe B.empty mbs of
+            S.Fail err -> return $ Left err
+            S.Partial p' -> go p'
+            S.Done r lo -> leftover lo >> return (Right r)
 
-    _ <- forkIO $ process inp out initState
+decode :: MonadThrow m => Conduit ByteString m Text
+decode = (CB.takeWhile (/= endOfStream) >> CB.drop 1) =$= CT.decode CT.utf8
+  where
+    endOfStream = 0
+
+display :: GInfSink Text IO
+display = CL.mapM_ T.putStr
+
+shell :: TChan Event -> CN.Application IO
+shell fromUI0 fromManipulator0 toManipulator0 = do
+    (fromManipulator, ()) <- fromManipulator0 $$+ return ()
+    go fromUI0 fromManipulator toManipulator0
+  where
+    go fromUI fromManipulator toManipulator = do
+        e <- atomically $ readTChan fromUI
+        case e of
+            CommandInput c -> do
+                yield (runPut $ put $ RunCommand c) $$ toManipulator
+                (fromManipulator', Right res) <- fromManipulator $$++ getResponse
+                case res of
+                    Fail err -> do
+                        hPutStrLn stderr err
+                        go fromUI fromManipulator' toManipulator
+                    Success -> do
+                        (fromManipulator'', ()) <- fromManipulator'
+                                                $$++ decode
+                                                =$ display
+                        go fromUI fromManipulator'' toManipulator
+
+start :: IO ()
+start = do
+    toShell <- newTChanIO
+
+    _ <- forkIO $ runServer "/tmp/mash_test" $ manipulator initState
+    _ <- forkIO $ runClient "/tmp/mash_test" $ shell toShell
 
     forever $ do
         -- prompt
@@ -97,4 +141,7 @@ main = do
         hFlush stdout
         -- execute a command
         l <- getLine
-        atomically $ writeTChan inp $ RunCommand l
+        atomically $ writeTChan toShell $ CommandInput l
+
+main :: IO ()
+main = start
