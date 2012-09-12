@@ -8,7 +8,7 @@ import Control.Monad (forever, void, when)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Control (MonadBaseControl, control)
 import Data.Conduit
-import qualified Data.Conduit.List as C
+import qualified Data.Conduit.List as CL
 import qualified Data.Conduit.Network as CN
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -31,7 +31,7 @@ intCommands = Map.fromList [("double", cmdDouble), ("tostr", cmdToStr stringComm
 
 initState :: Manipulator String
 initState = Manipulator
-    { manipSource = C.sourceList $ map show ([1..10]::[Int])
+    { manipSource = CL.sourceList $ map show ([1..10]::[Int])
     , manipPipe = awaitForever yield
     , manipCommands = generalCommands
     , manipCtxCommands = stringCommands
@@ -86,7 +86,7 @@ main = do
     _ <- forkIO $ forever $ do
         -- output the current state
         AnySource s <- atomically $ readTChan out
-        output <- s $$ C.consume
+        output <- s $$ CL.consume
         putStrLn $ "Output: " ++ show output
 
     _ <- forkIO $ process inp out initState
