@@ -1,5 +1,6 @@
 module Main where
 
+import Control.Applicative
 import Control.Monad
 import Graphics.Vty
 import Graphics.Vty.Widgets.All
@@ -34,7 +35,13 @@ main = do
         when (l == "\n") $ do
             setEditText e ""
             focus v
-    e `onActivate` \this ->
-        getEditText this >>= (error . ("You entered: " ++))
+    e `onActivate` \this -> do
+        c <- init <$> tail <$> getEditText this
+        case c of
+            "quit" -> shutdownUi
+            _ -> do
+                setText v c
+                setEditText e ""
+                focus v
 
     runUi c defaultContext
