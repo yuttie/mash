@@ -1,47 +1,31 @@
 module Main where
 
-import Control.Applicative
-import Control.Monad
-import Graphics.Vty
-import Graphics.Vty.Widgets.All
+import Data.Conduit
+import qualified Data.Conduit.List as CL
+import Data.Map (Map)
+import qualified Data.Map as Map
 
+import Manipulator
+import Shell.UI.Commandline
+
+
+-- Commands
+generalCommands :: Map String GCommand
+generalCommands = Map.fromList [("resetpl", gcmdResetPipeline stringCommands)]
+
+stringCommands :: Map String (CCommand String)
+stringCommands = Map.fromList [("append", cmdAppend1), ("toint", cmdToInt intCommands)]
+
+intCommands :: Map String (CCommand Int)
+intCommands = Map.fromList [("double", cmdDouble), ("tostr", cmdToStr stringCommands)]
+
+initState :: Manipulator String
+initState = Manipulator
+    { manipSource = CL.sourceList $ map show ([1..10]::[Int])
+    , manipPipe = awaitForever yield
+    , manipCommands = generalCommands
+    , manipCtxCommands = stringCommands
+    }
 
 main :: IO ()
-main = do
-    v <- plainText "Test"
-    f <- vFill ' '
-    e <- editWidget
-    ui <- (return v <--> return f) <--> return e
-    setBoxChildSizePolicy ui $ PerChild BoxAuto (BoxFixed 1)
-
-    fg <- newFocusGroup
-    setFocusGroupNextKey fg (KASCII '\0') []
-    setFocusGroupPrevKey fg (KASCII '\0') []
-    _ <- addToFocusGroup fg v
-    _ <- addToFocusGroup fg e
-
-    c <- newCollection
-    switchToMainUI <- addToCollection c ui fg
-
-    v `onKeyPressed` \_ key _ ->
-        if key == KASCII ':'
-            then do
-                setEditText e ":"
-                setEditCursorPosition e (0, 1)
-                focus e
-                return True
-            else return False
-    e `onChange` \l ->
-        when (l == "\n") $ do
-            setEditText e ""
-            focus v
-    e `onActivate` \this -> do
-        c <- init <$> tail <$> getEditText this
-        case c of
-            "quit" -> shutdownUi
-            _ -> do
-                setText v c
-                setEditText e ""
-                focus v
-
-    runUi c defaultContext
+main = start initState
