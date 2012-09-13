@@ -107,12 +107,12 @@ decode = (CB.takeWhile (/= endOfStream) >> CB.drop 1) =$= CT.decode CT.utf8
 display :: GInfSink Text IO
 display = CL.mapM_ T.putStr
 
-shell :: TChan Event -> CN.Application IO
-shell fromUI0 fromManipulator0 toManipulator0 = do
+shell :: TChan Event -> Sink Text IO () -> CN.Application IO
+shell fromUI0 toUI0 fromManipulator0 toManipulator0 = do
     (fromManipulator, ()) <- fromManipulator0 $$+ return ()
-    go fromUI0 fromManipulator toManipulator0
+    go fromUI0 toUI0 fromManipulator toManipulator0
   where
-    go fromUI fromManipulator toManipulator = do
+    go fromUI toUI fromManipulator toManipulator = do
         e <- atomically $ readTChan fromUI
         case e of
             CommandInput c -> do
@@ -121,19 +121,19 @@ shell fromUI0 fromManipulator0 toManipulator0 = do
                 case res of
                     Fail err -> do
                         hPutStrLn stderr err
-                        go fromUI fromManipulator' toManipulator
+                        go fromUI toUI fromManipulator' toManipulator
                     Success -> do
                         (fromManipulator'', ()) <- fromManipulator'
                                                 $$++ decode
-                                                =$ display
-                        go fromUI fromManipulator'' toManipulator
+                                                =$ toUI
+                        go fromUI toUI fromManipulator'' toManipulator
 
 start :: Manipulator a -> IO ()
 start initState = do
     toShell <- newTChanIO
 
     _ <- forkIO $ runServer "/tmp/mash_test" $ manipulator initState
-    _ <- forkIO $ runClient "/tmp/mash_test" $ shell toShell
+    _ <- forkIO $ runClient "/tmp/mash_test" $ shell toShell display
 
     forever $ do
         -- prompt
