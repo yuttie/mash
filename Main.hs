@@ -8,8 +8,9 @@ import Graphics.Vty.Widgets.All
 main :: IO ()
 main = do
     v <- plainText "Test"
+    f <- vFill ' '
     e <- editWidget
-    ui <- vBox v e
+    ui <- (return v <--> return f) <--> return e
     setBoxChildSizePolicy ui $ PerChild BoxAuto (BoxFixed 1)
 
     fg <- newFocusGroup
