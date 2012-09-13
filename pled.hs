@@ -128,8 +128,8 @@ shell fromUI0 fromManipulator0 toManipulator0 = do
                                                 =$ display
                         go fromUI fromManipulator'' toManipulator
 
-start :: IO ()
-start = do
+start :: Manipulator a -> IO ()
+start initState = do
     toShell <- newTChanIO
 
     _ <- forkIO $ runServer "/tmp/mash_test" $ manipulator initState
@@ -144,4 +144,4 @@ start = do
         atomically $ writeTChan toShell $ CommandInput l
 
 main :: IO ()
-main = start
+main = start initState
