@@ -6,10 +6,6 @@ import Control.Applicative
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Monad
-import Control.Monad.IO.Class
-import Data.Conduit
-import qualified Data.Conduit.List as CL
-import Data.Text (Text)
 import qualified Data.Text as T
 import Graphics.Vty
 import Graphics.Vty.Widgets.All
@@ -18,11 +14,6 @@ import Manipulator
 import Mash.Core
 import Shell.Core
 
-
-display :: Widget FormattedText -> Sink Text IO ()
-display w = do
-    ls <- CL.consume
-    liftIO $ schedule $ setText w $ T.unpack $ T.unlines ls
 
 start :: Manipulator a -> IO ()
 start initState = do
@@ -46,10 +37,11 @@ start initState = do
     switchToMainUI <- addToCollection c ui fg
 
     -- Run a manipulator and a shell.
+    fromShell <- newTChanIO
     toShell <- newTChanIO
 
     _ <- forkIO $ runServer "/tmp/mash_test" $ manipulator initState
-    _ <- forkIO $ runClient "/tmp/mash_test" $ shell toShell $ display v
+    _ <- forkIO $ runClient "/tmp/mash_test" $ shell toShell fromShell
 
     -- Vty event handlers
     v `onKeyPressed` \_ key _ ->
@@ -66,11 +58,16 @@ start initState = do
             focus v
     e `onActivate` \this -> do
         l <- init <$> tail <$> getEditText this
-        case l of
-            "quit" -> shutdownUi
-            _ -> do
-                atomically $ writeTChan toShell $ CommandInput l
+        atomically $ writeTChan toShell $ CommandInput l
+        u <- atomically $ readTChan fromShell
+        case u of
+            ShowOutput t -> do
+                setText v $ T.unpack t
                 setEditText e ""
                 focus v
+            ShowError err -> do
+                setEditText e $ "Error: " ++ err
+                focus v
+            Shutdown -> shutdownUi
 
     runUi c defaultContext
