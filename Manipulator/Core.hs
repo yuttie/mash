@@ -42,7 +42,8 @@ data GCommand = forall b. Show b => GCommand (forall a. Manipulator a -> Manipul
 
 data CCommand a = forall b. Show b => CCommand (Manipulator a -> Manipulator b)
 
-data Message = RunCommand String
+data Message = Output
+             | RunCommand String
              deriving (Generic)
 
 instance Serialize Message
@@ -98,26 +99,29 @@ snoc b = loop
                 yield bs
                 loop
 
-manipulator :: Manipulator a -> CN.Application IO
+manipulator :: Show a => Manipulator a -> CN.Application IO
 manipulator st0 fromShell0 toShell0 = do
     (fromShell, ()) <- fromShell0 $$+ return ()
     go st0 fromShell toShell0
   where
-    go :: Manipulator a -> ResumableSource IO ByteString -> Sink ByteString IO () -> IO ()
-    go st@(Manipulator _ _ gcs ccs) fromShell toShell = do
+    go :: Show a => Manipulator a -> ResumableSource IO ByteString -> Sink ByteString IO () -> IO ()
+    go st@(Manipulator src pipe gcs ccs) fromShell toShell = do
         (fromShell', Right msg) <- fromShell $$++ getMessage
         case msg of
+            Output -> do
+                src $= pipe $= render $= encode $$ toShell
+                go st fromShell' toShell
             RunCommand c -> case Map.lookup c ccs of
                 Just (CCommand f) -> do
                     yield (runPut $ put Success) $$ toShell
-                    let st'@(Manipulator src pipe _ _) = f st
-                    src $= pipe $= render $= encode $$ toShell
+                    let st'@(Manipulator src' pipe' _ _) = f st
+                    src' $= pipe' $= render $= encode $$ toShell
                     go st' fromShell' toShell
                 Nothing -> case Map.lookup c gcs of
                     Just (GCommand f) -> do
                         yield (runPut $ put Success) $$ toShell
-                        let st'@(Manipulator src pipe _ _) = f st
-                        src $= pipe $= render $= encode $$ toShell
+                        let st'@(Manipulator src' pipe' _ _) = f st
+                        src' $= pipe' $= render $= encode $$ toShell
                         go st' fromShell' toShell
                     Nothing -> do
                         yield (runPut $ put $ Fail $ "Unknown command " ++ show c ++ ".") $$ toShell

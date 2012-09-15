@@ -59,6 +59,11 @@ shell fromUI0 toUI0 fromManipulator0 toManipulator0 = do
         e <- atomically $ readTChan fromUI
         case e of
             CommandInput "quit" -> atomically $ writeTChan toUI Shutdown
+            CommandInput "show" -> do
+                yield (runPut $ put Output) $$ toManipulator
+                (fromManipulator', t) <- fromManipulator $$++ decode =$ window =$ concat
+                atomically $ writeTChan toUI $ ShowOutput t
+                go fromUI toUI fromManipulator' toManipulator
             CommandInput c -> do
                 yield (runPut $ put $ RunCommand c) $$ toManipulator
                 (fromManipulator', Right res) <- fromManipulator $$++ getResponse
