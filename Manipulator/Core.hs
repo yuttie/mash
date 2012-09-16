@@ -7,7 +7,6 @@ module Manipulator.Core
     , CCommand(..)
     , Message(..)
     , Response(..)
-    , AnySource(..)
     , manipulator
     ) where
 
@@ -53,8 +52,6 @@ data Response = Success
               deriving (Generic)
 
 instance Serialize Response
-
-data AnySource = forall a. Show a => AnySource (Source IO a)
 
 getMessage :: Monad m => GLSink ByteString m (Either String Message)
 getMessage = go $ runGetPartial get
