@@ -14,7 +14,7 @@ import Mash.Core
 import Shell.Core
 
 
-start :: Show a => Manipulator a -> IO ()
+start :: ToMarkup a => Manipulator a -> IO ()
 start initState = do
     fromShell <- newTChanIO
     toShell <- newTChanIO

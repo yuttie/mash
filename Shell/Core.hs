@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Shell.Core
     ( Event(..)
     , UIUpdate(..)
@@ -6,16 +7,18 @@ module Shell.Core
 
 import Control.Applicative ((<$>))
 import Control.Concurrent.STM (TChan, atomically, readTChan, writeTChan)
+import Data.Attoparsec.ByteString.Char8 (string)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
-import Data.Conduit (Conduit, GInfConduit, GSink, GLSink, MonadThrow, ($$), ($$+), ($$++), (=$), (=$=), await, awaitForever, leftover, yield)
-import qualified Data.Conduit.Binary as CB
+import Data.Conduit (Sink, GLSink, MonadThrow, ($$), ($$+), ($$++), (=$), await, leftover, yield)
+import qualified Data.Conduit.Attoparsec as CA
 import qualified Data.Conduit.List as CL
 import qualified Data.Conduit.Network as CN
 import qualified Data.Conduit.Text as CT
 import Data.Maybe (fromMaybe)
 import Data.Serialize (Serialize, get, put, runGetPartial, runPut)
 import qualified Data.Serialize as S
+import Data.String (IsString)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Prelude hiding (concat)
@@ -39,16 +42,27 @@ getResponse = go $ runGetPartial get
             S.Partial p' -> go p'
             S.Done r lo -> leftover lo >> return (Right r)
 
-decode :: MonadThrow m => Conduit ByteString m Text
-decode = (CB.takeWhile (/= endOfStream) >> CB.drop 1) =$= CT.decode CT.utf8
+getStreamText :: MonadThrow m => Sink ByteString m Text
+getStreamText = do
+    _ <- CA.sinkParser $ string startTag
+    go =$ CT.decode CT.utf8 =$ (T.concat <$> CL.consume)
   where
-    endOfStream = 0
-
-window :: Monad m => GInfConduit Text m Text
-window = awaitForever yield
-
-concat :: Monad m => GSink Text m Text
-concat = T.concat <$> CL.consume
+    startTag, endTag :: IsString a => a
+    startTag = "<stream>"
+    endTag = "</stream>"
+    go = do
+        mbs <- await
+        case mbs of
+            Nothing -> error $ "End tag \"" ++ endTag ++ "\" is missing."
+            Just bs
+                | B.null y -> do
+                    yield x
+                    go
+                | otherwise -> do
+                    leftover $ B.drop (B.length endTag) y
+                    yield x
+              where
+                (x, y) = B.breakSubstring endTag bs
 
 shell :: TChan Event -> TChan UIUpdate -> CN.Application IO
 shell fromUI0 toUI0 fromManipulator0 toManipulator0 = do
@@ -61,7 +75,7 @@ shell fromUI0 toUI0 fromManipulator0 toManipulator0 = do
             CommandInput "quit" -> atomically $ writeTChan toUI Shutdown
             CommandInput "show" -> do
                 _ <- yield (runPut $ put Output) $$ toManipulator
-                (fromManipulator', t) <- fromManipulator $$++ decode =$ window =$ concat
+                (fromManipulator', t) <- fromManipulator $$++ getStreamText
                 atomically $ writeTChan toUI $ ShowOutput t
                 go fromUI toUI fromManipulator' toManipulator
             CommandInput c -> do
@@ -72,6 +86,6 @@ shell fromUI0 toUI0 fromManipulator0 toManipulator0 = do
                         atomically $ writeTChan toUI $ ShowError err
                         go fromUI toUI fromManipulator' toManipulator
                     Success -> do
-                        (fromManipulator'', t) <- fromManipulator' $$++ decode =$ window =$ concat
+                        (fromManipulator'', t) <- fromManipulator' $$++ getStreamText
                         atomically $ writeTChan toUI $ ShowOutput t
                         go fromUI toUI fromManipulator'' toManipulator
