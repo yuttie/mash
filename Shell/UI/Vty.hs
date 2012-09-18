@@ -15,7 +15,7 @@ import Mash.Core
 import Shell.Core
 
 
-start :: Show a => Manipulator a -> IO ()
+start :: ToMarkup a => Manipulator a -> IO ()
 start initState = do
     -- UI construction
     v <- plainText ""
