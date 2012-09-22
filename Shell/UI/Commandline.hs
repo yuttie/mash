@@ -2,6 +2,7 @@ module Shell.UI.Commandline
     ( start
     ) where
 
+import Control.Applicative ((<$>))
 import Control.Concurrent (forkIO)
 import Control.Concurrent.STM (atomically, newTChanIO, readTChan, writeTChan)
 import Control.Monad (forever)
@@ -27,10 +28,11 @@ start initState = do
         putStr "> "
         hFlush stdout
         -- execute a command
-        l <- getLine
-        atomically $ writeTChan toShell $ CommandInput l
+        (cmd:args) <- words <$> getLine
+        atomically $ writeTChan toShell $ CommandInput cmd args
         u <- atomically $ readTChan fromShell
         case u of
+            NoUpdate -> return ()
             ShowOutput t -> T.putStrLn t
             ShowError err -> putStrLn $ "Error: " ++ err
             Shutdown -> exitSuccess

@@ -57,10 +57,11 @@ start initState = do
             setEditText e ""
             focus v
     e `onActivate` \this -> do
-        l <- init <$> tail <$> getEditText this
-        atomically $ writeTChan toShell $ CommandInput l
+        (cmd:args) <- words <$> init <$> tail <$> getEditText this
+        atomically $ writeTChan toShell $ CommandInput cmd args
         u <- atomically $ readTChan fromShell
         case u of
+            NoUpdate -> return ()
             ShowOutput t -> do
                 setText v $ T.unpack t
                 setEditText e ""

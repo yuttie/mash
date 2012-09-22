@@ -37,12 +37,12 @@ data Manipulator a = Manipulator
     , manipCtxCommands :: Map String (CCommand a)
     }
 
-data GCommand = forall b. ToMarkup b => GCommand (forall a. Manipulator a -> Manipulator b)
+data GCommand = forall b. ToMarkup b => GCommand (forall a. Manipulator a -> [String] -> Manipulator b)
 
-data CCommand a = forall b. ToMarkup b => CCommand (Manipulator a -> Manipulator b)
+data CCommand a = forall b. ToMarkup b => CCommand (Manipulator a -> [String] -> Manipulator b)
 
 data Message = Output
-             | RunCommand String
+             | RunCommand String [String]
              deriving (Generic)
 
 instance Serialize Message
@@ -93,16 +93,16 @@ manipulator st0 fromShell0 toShell0 = do
             Output -> do
                 src $= pipe $= render $= builderToByteString $$ toShell
                 go st fromShell' toShell
-            RunCommand c -> case Map.lookup c ccs of
+            RunCommand c args -> case Map.lookup c ccs of
                 Just (CCommand f) -> do
                     yield (runPut $ put Success) $$ toShell
-                    let st'@(Manipulator src' pipe' _ _) = f st
+                    let st'@(Manipulator src' pipe' _ _) = f st args
                     src' $= pipe' $= render $= builderToByteString $$ toShell
                     go st' fromShell' toShell
                 Nothing -> case Map.lookup c gcs of
                     Just (GCommand f) -> do
                         yield (runPut $ put Success) $$ toShell
-                        let st'@(Manipulator src' pipe' _ _) = f st
+                        let st'@(Manipulator src' pipe' _ _) = f st args
                         src' $= pipe' $= render $= builderToByteString $$ toShell
                         go st' fromShell' toShell
                     Nothing -> do

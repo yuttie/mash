@@ -12,9 +12,9 @@ import Manipulator.Core
 
 
 cmdAppend1 :: CCommand String
-cmdAppend1 = CCommand $ \st -> st { manipPipe = manipPipe st =$= C.map (++ "1") }
+cmdAppend1 = CCommand $ \st _ -> st { manipPipe = manipPipe st =$= C.map (++ "1") }
 
 cmdToInt :: Map String (CCommand Int) -> CCommand String
-cmdToInt intCmds = CCommand $ \st -> st { manipPipe = manipPipe st =$= C.map read
-                                        , manipCtxCommands = intCmds
-                                        }
+cmdToInt intCmds = CCommand $ \st _ -> st { manipPipe = manipPipe st =$= C.map read
+                                          , manipCtxCommands = intCmds
+                                          }
