@@ -13,10 +13,10 @@ import Shell.UI.Commandline
 generalCommands :: Map String GCommand
 generalCommands = Map.fromList [("resetpl", gcmdResetPipeline stringCommands)]
 
-stringCommands :: Map String (CCommand String)
+stringCommands :: Map String (Command String)
 stringCommands = Map.fromList [("append", cmdAppend1), ("toint", cmdToInt intCommands)]
 
-intCommands :: Map String (CCommand Int)
+intCommands :: Map String (Command Int)
 intCommands = Map.fromList [("double", cmdDouble), ("tostr", cmdToStr stringCommands)]
 
 initState :: Manipulator String

@@ -4,7 +4,7 @@
 module Manipulator.Core
     ( Manipulator(..)
     , GCommand(..)
-    , CCommand(..)
+    , Command(..)
     , Message(..)
     , Response(..)
     , ToMarkup(..)
@@ -35,12 +35,12 @@ data Manipulator a = Manipulator
     { manipSource :: Source IO String
     , manipPipe :: Conduit String IO a
     , manipCommands :: Map String GCommand
-    , manipCtxCommands :: Map String (CCommand a)
+    , manipCtxCommands :: Map String (Command a)
     }
 
 data GCommand = forall b. ToMarkup b => GCommand (forall a. Manipulator a -> [String] -> Manipulator b)
 
-data CCommand a = forall b. ToMarkup b => CCommand (Manipulator a -> [String] -> Manipulator b)
+data Command a = forall b. ToMarkup b => Command (Manipulator a -> [String] -> Manipulator b)
 
 data Message = Output
              | RunCommand String [String]
@@ -82,11 +82,11 @@ unlinesB = loop True
                 yield b
                 loop False
 
-lookupCommand :: String -> Manipulator a -> Maybe (CCommand a)
+lookupCommand :: String -> Manipulator a -> Maybe (Command a)
 lookupCommand name (Manipulator _ _ gcs ccs) =
-    Map.lookup name ccs <|> (asCCommand <$> Map.lookup name gcs)
+    Map.lookup name ccs <|> (asCommand <$> Map.lookup name gcs)
   where
-    asCCommand (GCommand f) = CCommand f
+    asCommand (GCommand f) = Command f
 
 manipulator :: ToMarkup a => Manipulator a -> CN.Application IO
 manipulator st0 fromShell0 toShell0 = do
@@ -101,7 +101,7 @@ manipulator st0 fromShell0 toShell0 = do
                 src $= pipe $= render $= builderToByteString $$ toShell
                 go st fromShell' toShell
             RunCommand name args -> case lookupCommand name st of
-                Just (CCommand f) -> do
+                Just (Command f) -> do
                     yield (runPut $ put Success) $$ toShell
                     let st'@(Manipulator src' pipe' _ _) = f st args
                     src' $= pipe' $= render $= builderToByteString $$ toShell

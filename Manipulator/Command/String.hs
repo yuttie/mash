@@ -11,10 +11,10 @@ import Data.Map (Map)
 import Manipulator.Core
 
 
-cmdAppend1 :: CCommand String
-cmdAppend1 = CCommand $ \st _ -> st { manipPipe = manipPipe st =$= C.map (++ "1") }
+cmdAppend1 :: Command String
+cmdAppend1 = Command $ \st _ -> st { manipPipe = manipPipe st =$= C.map (++ "1") }
 
-cmdToInt :: Map String (CCommand Int) -> CCommand String
-cmdToInt intCmds = CCommand $ \st _ -> st { manipPipe = manipPipe st =$= C.map read
-                                          , manipCtxCommands = intCmds
-                                          }
+cmdToInt :: Map String (Command Int) -> Command String
+cmdToInt intCmds = Command $ \st _ -> st { manipPipe = manipPipe st =$= C.map read
+                                         , manipCtxCommands = intCmds
+                                         }
