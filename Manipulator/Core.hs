@@ -38,7 +38,7 @@ data Manipulator a = Manipulator
     , manipCtxCommands :: Map String (Command a)
     }
 
-data GCommand = forall b. ToMarkup b => GCommand (forall a. Manipulator a -> [String] -> Manipulator b)
+newtype GCommand = GCommand (forall a. Command a)
 
 data Command a = forall b. ToMarkup b => Command (Manipulator a -> [String] -> Manipulator b)
 
@@ -86,7 +86,7 @@ lookupCommand :: String -> Manipulator a -> Maybe (Command a)
 lookupCommand name (Manipulator _ _ gcs ccs) =
     Map.lookup name ccs <|> (asCommand <$> Map.lookup name gcs)
   where
-    asCommand (GCommand f) = Command f
+    asCommand (GCommand c) = c
 
 manipulator :: ToMarkup a => Manipulator a -> CN.Application IO
 manipulator st0 fromShell0 toShell0 = do
