@@ -13,6 +13,7 @@ module Manipulator.Core
 
 import Blaze.ByteString.Builder (Builder)
 import Blaze.ByteString.Builder.Char.Utf8 (fromChar, fromString)
+import Control.Applicative ((<$>), (<|>))
 import Control.Monad (unless)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
@@ -81,30 +82,30 @@ unlinesB = loop True
                 yield b
                 loop False
 
+lookupCommand :: String -> Manipulator a -> Maybe (CCommand a)
+lookupCommand name (Manipulator _ _ gcs ccs) =
+    Map.lookup name ccs <|> (asCCommand <$> Map.lookup name gcs)
+  where
+    asCCommand (GCommand f) = CCommand f
+
 manipulator :: ToMarkup a => Manipulator a -> CN.Application IO
 manipulator st0 fromShell0 toShell0 = do
     (fromShell, ()) <- fromShell0 $$+ return ()
     go st0 fromShell toShell0
   where
     go :: ToMarkup a => Manipulator a -> ResumableSource IO ByteString -> Sink ByteString IO () -> IO ()
-    go st@(Manipulator src pipe gcs ccs) fromShell toShell = do
+    go st@(Manipulator src pipe _ _) fromShell toShell = do
         (fromShell', Right msg) <- fromShell $$++ getMessage
         case msg of
             Output -> do
                 src $= pipe $= render $= builderToByteString $$ toShell
                 go st fromShell' toShell
-            RunCommand c args -> case Map.lookup c ccs of
+            RunCommand name args -> case lookupCommand name st of
                 Just (CCommand f) -> do
                     yield (runPut $ put Success) $$ toShell
                     let st'@(Manipulator src' pipe' _ _) = f st args
                     src' $= pipe' $= render $= builderToByteString $$ toShell
                     go st' fromShell' toShell
-                Nothing -> case Map.lookup c gcs of
-                    Just (GCommand f) -> do
-                        yield (runPut $ put Success) $$ toShell
-                        let st'@(Manipulator src' pipe' _ _) = f st args
-                        src' $= pipe' $= render $= builderToByteString $$ toShell
-                        go st' fromShell' toShell
-                    Nothing -> do
-                        yield (runPut $ put $ Fail $ "Unknown command " ++ show c ++ ".") $$ toShell
-                        go st fromShell' toShell
+                Nothing -> do
+                    yield (runPut $ put $ Fail $ "Unknown command " ++ show name ++ ".") $$ toShell
+                    go st fromShell' toShell
