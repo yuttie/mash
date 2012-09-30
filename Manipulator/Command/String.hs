@@ -1,6 +1,6 @@
 module Manipulator.Command.String
     ( -- String commands
-      cmdAppend1
+      cmdAppend
     , cmdToInt
     ) where
 
@@ -11,9 +11,9 @@ import Data.Map (Map)
 import Manipulator.Core
 
 
-cmdAppend1 :: Command String
-cmdAppend1 = Command $ \st args -> case args of
-    [] -> Right $ st { manipPipe = manipPipe st =$= C.map (++ "1") }
+cmdAppend :: Command String
+cmdAppend = Command $ \st args -> case args of
+    [s] -> Right $ st { manipPipe = manipPipe st =$= C.map (++ s) }
     _ -> Left $ CommandArgumentError args
 
 cmdToInt :: Map String (Command Int) -> Command String

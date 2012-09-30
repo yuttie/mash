@@ -14,10 +14,10 @@ generalCommands :: Map String GCommand
 generalCommands = Map.fromList [("resetpl", gcmdResetPipeline stringCommands)]
 
 stringCommands :: Map String (Command String)
-stringCommands = Map.fromList [("append", cmdAppend1), ("toint", cmdToInt intCommands)]
+stringCommands = Map.fromList [("append", cmdAppend), ("toint", cmdToInt intCommands)]
 
 intCommands :: Map String (Command Int)
-intCommands = Map.fromList [("double", cmdDouble), ("tostr", cmdToStr stringCommands)]
+intCommands = Map.fromList [("mult", cmdMult), ("tostr", cmdToStr stringCommands)]
 
 initState :: Manipulator String
 initState = Manipulator
