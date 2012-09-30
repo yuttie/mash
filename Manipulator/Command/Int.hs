@@ -12,9 +12,13 @@ import Manipulator.Core
 
 
 cmdDouble :: Command Int
-cmdDouble = Command $ \st _ -> st { manipPipe = manipPipe st =$= C.map (2 *) }
+cmdDouble = Command $ \st args -> case args of
+    [] -> Right $ st { manipPipe = manipPipe st =$= C.map (2 *) }
+    _ -> Left $ CommandArgumentError args
 
 cmdToStr :: Map String (Command String) -> Command Int
-cmdToStr strCmds = Command $ \st _ -> st { manipPipe = manipPipe st =$= C.map show
-                                         , manipCtxCommands = strCmds
-                                         }
+cmdToStr strCmds = Command $ \st args -> case args of
+    [] -> Right $ st { manipPipe = manipPipe st =$= C.map show
+                     , manipCtxCommands = strCmds
+                     }
+    _ -> Left $ CommandArgumentError args

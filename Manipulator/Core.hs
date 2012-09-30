@@ -3,6 +3,7 @@
 {-# LANGUAGE Rank2Types #-}
 module Manipulator.Core
     ( Manipulator(..)
+    , ManipulatorError(..)
     , GCommand(..)
     , Command(..)
     , Message(..)
@@ -38,9 +39,12 @@ data Manipulator a = Manipulator
     , manipCtxCommands :: Map String (Command a)
     }
 
+data ManipulatorError = CommandArgumentError [String]
+                      deriving (Show)
+
 newtype GCommand = GCommand (forall a. Command a)
 
-data Command a = forall b. ToMarkup b => Command (Manipulator a -> [String] -> Manipulator b)
+data Command a = forall b. ToMarkup b => Command (Manipulator a -> [String] -> Either ManipulatorError (Manipulator b))
 
 data Message = Output
              | RunCommand String [String]
@@ -101,11 +105,14 @@ manipulator st0 fromShell0 toShell0 = do
                 src $= pipe $= render $= builderToByteString $$ toShell
                 go st fromShell' toShell
             RunCommand name args -> case lookupCommand name st of
-                Just (Command f) -> do
-                    yield (runPut $ put Success) $$ toShell
-                    let st'@(Manipulator src' pipe' _ _) = f st args
-                    src' $= pipe' $= render $= builderToByteString $$ toShell
-                    go st' fromShell' toShell
+                Just (Command f) -> case f st args of
+                    Right st'@(Manipulator src' pipe' _ _) -> do
+                        yield (runPut $ put Success) $$ toShell
+                        src' $= pipe' $= render $= builderToByteString $$ toShell
+                        go st' fromShell' toShell
+                    Left err -> do
+                        yield (runPut $ put $ Fail $ show err) $$ toShell
+                        go st fromShell' toShell
                 Nothing -> do
                     yield (runPut $ put $ Fail $ "Unknown command " ++ show name ++ ".") $$ toShell
                     go st fromShell' toShell
