@@ -10,6 +10,8 @@ import Data.Map (Map)
 import Data.Maybe (listToMaybe)
 
 import Manipulator.Core
+import Manipulator.Stream.Int ()
+import Manipulator.Stream.String ()
 
 
 maybeRead :: Read a => String -> Maybe a

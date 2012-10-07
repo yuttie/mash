@@ -7,6 +7,7 @@ import Data.Conduit (awaitForever, yield)
 import Data.Map (Map)
 
 import Manipulator.Core
+import Manipulator.Stream.String ()
 
 
 gcmdResetPipeline :: Map String (Command String) -> GCommand

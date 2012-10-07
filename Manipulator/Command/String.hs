@@ -9,6 +9,8 @@ import qualified Data.Conduit.List as C
 import Data.Map (Map)
 
 import Manipulator.Core
+import Manipulator.Stream.Int ()
+import Manipulator.Stream.String ()
 
 
 cmdAppend :: Command String
