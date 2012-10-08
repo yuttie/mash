@@ -5,6 +5,7 @@ import Data.Conduit
 import qualified Data.Conduit.List as CL
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Data.Text (Text)
 import Data.Word (Word8)
 
 import Manipulator
@@ -16,7 +17,10 @@ generalCommands :: Map String GCommand
 generalCommands = Map.fromList [("resetpl", gcmdResetPipeline bytesCommands)]
 
 bytesCommands :: Map String (Command Bytes)
-bytesCommands = Map.fromList [("appendB", cmdAppendBytes)]
+bytesCommands = Map.fromList [("appendB", cmdAppendBytes), ("decode", cmdDecodeUtf8 textCommands)]
+
+textCommands :: Map String (Command Text)
+textCommands = Map.fromList [("appendT", cmdAppendText)]
 
 initState :: Manipulator Bytes
 initState = Manipulator
