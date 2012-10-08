@@ -7,30 +7,34 @@ module Manipulator.Core
     , GCommand(..)
     , Command(..)
     , Render(..)
+    , Bytes(..)
+    , unbytes
     , Message(..)
     , Response(..)
     , manipulator
     ) where
 
 import Blaze.ByteString.Builder (Builder)
-import Blaze.ByteString.Builder.Char.Utf8 (fromString)
+import Blaze.ByteString.Builder.Char.Utf8 (fromChar, fromString)
 import Control.Applicative ((<$>), (<|>))
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
-import Data.Conduit (Source, Conduit, Sink, ResumableSource, GInfConduit, GLSink, ($$), ($$+), ($$++), ($=), await, leftover, yield)
+import Data.Conduit (Source, Conduit, Sink, ResumableSource, GInfConduit, GLSink, ($$), ($$+), ($$++), ($=), await, awaitE, leftover, yield)
 import Data.Conduit.Blaze (builderToByteString)
 import qualified Data.Conduit.Network as CN
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
+import Data.Monoid ((<>), mempty)
 import Data.Serialize (Serialize, get, put, runGetPartial, runPut)
 import qualified Data.Serialize as S
+import Numeric (showHex)
 import GHC.Generics
 
 
 data Manipulator a = Manipulator
-    { manipSource :: Source IO String
-    , manipPipe :: Conduit String IO a
+    { manipSource :: Source IO Bytes
+    , manipPipe :: Conduit Bytes IO a
     , manipCommands :: Map String GCommand
     , manipCtxCommands :: Map String (Command a)
     }
@@ -51,6 +55,30 @@ renderStream = do
     r <- render
     yield $ fromString "</stream>"
     return r
+
+newtype Bytes = Bytes ByteString
+
+unbytes :: Bytes -> ByteString
+unbytes (Bytes bs) = bs
+
+instance Render Bytes where
+    render = go mempty B.empty
+      where
+        go sep bs
+            | B.length bs < 16 = awaitE >>= either
+                (close sep bs)
+                (go sep . (bs <>) . unbytes)
+            | otherwise = do
+                let (x, y) = B.splitAt 16 bs
+                yield $ sep <> fromBytes x
+                go (fromChar '\n') y
+        close sep bs r
+            | B.null bs = return r
+            | otherwise = yield (sep <> fromBytes bs) >> return r
+        fromBytes bs = B.foldl (\a b -> a <> fromChar ' ' <> fromByte b) (fromByte $ B.head bs) (B.tail bs)
+        fromByte b
+            | b < 0x10 = fromChar '0' <> fromString (showHex b "")
+            | otherwise = fromString $ showHex b ""
 
 data Message = Output
              | RunCommand String [String]

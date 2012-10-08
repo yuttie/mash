@@ -7,12 +7,11 @@ import Data.Conduit (awaitForever, yield)
 import Data.Map (Map)
 
 import Manipulator.Core
-import Manipulator.Stream.String ()
 
 
-gcmdResetPipeline :: Map String (Command String) -> GCommand
-gcmdResetPipeline strCmds = GCommand $ Command $ \st args -> case args of
+gcmdResetPipeline :: Map String (Command Bytes) -> GCommand
+gcmdResetPipeline cmds = GCommand $ Command $ \st args -> case args of
     [] -> Right $ st { manipPipe = awaitForever yield
-                     , manipCtxCommands = strCmds
+                     , manipCtxCommands = cmds
                      }
     _ -> Left $ CommandArgumentError args

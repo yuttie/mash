@@ -1,9 +1,11 @@
 module Main where
 
+import qualified Data.ByteString as B
 import Data.Conduit
 import qualified Data.Conduit.List as CL
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Data.Word (Word8)
 
 import Manipulator
 import Shell.UI.Commandline
@@ -11,20 +13,17 @@ import Shell.UI.Commandline
 
 -- Commands
 generalCommands :: Map String GCommand
-generalCommands = Map.fromList [("resetpl", gcmdResetPipeline stringCommands)]
+generalCommands = Map.fromList [("resetpl", gcmdResetPipeline bytesCommands)]
 
-stringCommands :: Map String (Command String)
-stringCommands = Map.fromList [("append", cmdAppend), ("toint", cmdToInt intCommands)]
+bytesCommands :: Map String (Command Bytes)
+bytesCommands = Map.fromList []
 
-intCommands :: Map String (Command Int)
-intCommands = Map.fromList [("mult", cmdMult), ("tostr", cmdToStr stringCommands)]
-
-initState :: Manipulator String
+initState :: Manipulator Bytes
 initState = Manipulator
-    { manipSource = CL.sourceList $ map show ([1..10]::[Int])
+    { manipSource = CL.sourceList [Bytes $ B.pack ([0..127]::[Word8])]
     , manipPipe = awaitForever yield
     , manipCommands = generalCommands
-    , manipCtxCommands = stringCommands
+    , manipCtxCommands = bytesCommands
     }
 
 main :: IO ()
