@@ -20,7 +20,7 @@ bytesCommands :: Map String (Command Bytes)
 bytesCommands = Map.fromList [("appendB", cmdAppendBytes), ("decode", cmdDecodeUtf8 textCommands)]
 
 textCommands :: Map String (Command Text)
-textCommands = Map.fromList []
+textCommands = Map.fromList [("appendT", cmdAppendText)]
 
 initState :: Manipulator Bytes
 initState = Manipulator
