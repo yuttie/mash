@@ -6,35 +6,35 @@ module Manipulator.Core
     , ManipulatorError(..)
     , GCommand(..)
     , Command(..)
+    , Render(..)
+    , Bytes(..)
+    , unbytes
     , Message(..)
     , Response(..)
-    , ToMarkup(..)
     , manipulator
     ) where
 
 import Blaze.ByteString.Builder (Builder)
 import Blaze.ByteString.Builder.Char.Utf8 (fromChar, fromString)
 import Control.Applicative ((<$>), (<|>))
-import Control.Monad (unless)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
-import Data.Conduit (Source, Conduit, Sink, ResumableSource, GInfConduit, GLSink, ($$), ($$+), ($$++), ($=), (=$=), await, awaitE, leftover, yield)
+import Data.Conduit (Source, Conduit, Sink, ResumableSource, GInfConduit, GLSink, ($$), ($$+), ($$++), ($=), await, awaitE, leftover, yield)
 import Data.Conduit.Blaze (builderToByteString)
-import qualified Data.Conduit.List as CL
 import qualified Data.Conduit.Network as CN
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
+import Data.Monoid ((<>), mempty)
 import Data.Serialize (Serialize, get, put, runGetPartial, runPut)
 import qualified Data.Serialize as S
+import Numeric (showHex)
 import GHC.Generics
-import Text.Blaze (ToMarkup(..))
-import Text.Blaze.Renderer.Utf8 (renderMarkupBuilder)
 
 
 data Manipulator a = Manipulator
-    { manipSource :: Source IO String
-    , manipPipe :: Conduit String IO a
+    { manipSource :: Source IO Bytes
+    , manipPipe :: Conduit Bytes IO a
     , manipCommands :: Map String GCommand
     , manipCtxCommands :: Map String (Command a)
     }
@@ -44,7 +44,41 @@ data ManipulatorError = CommandArgumentError [String]
 
 newtype GCommand = GCommand (forall a. Command a)
 
-data Command a = forall b. ToMarkup b => Command (Manipulator a -> [String] -> Either ManipulatorError (Manipulator b))
+data Command a = forall b. Render b => Command (Manipulator a -> [String] -> Either ManipulatorError (Manipulator b))
+
+class Render a where
+    render :: Monad m => GInfConduit a m Builder
+
+renderStream :: (Render a, Monad m) => GInfConduit a m Builder
+renderStream = do
+    yield $ fromString "<stream>"
+    r <- render
+    yield $ fromString "</stream>"
+    return r
+
+newtype Bytes = Bytes ByteString
+
+unbytes :: Bytes -> ByteString
+unbytes (Bytes bs) = bs
+
+instance Render Bytes where
+    render = go mempty B.empty
+      where
+        go sep bs
+            | B.length bs < 16 = awaitE >>= either
+                (close sep bs)
+                (go sep . (bs <>) . unbytes)
+            | otherwise = do
+                let (x, y) = B.splitAt 16 bs
+                yield $ sep <> fromBytes x
+                go (fromChar '\n') y
+        close sep bs r
+            | B.null bs = return r
+            | otherwise = yield (sep <> fromBytes bs) >> return r
+        fromBytes bs = B.foldl (\a b -> a <> fromChar ' ' <> fromByte b) (fromByte $ B.head bs) (B.tail bs)
+        fromByte b
+            | b < 0x10 = fromChar '0' <> fromString (showHex b "")
+            | otherwise = fromString $ showHex b ""
 
 data Message = Output
              | RunCommand String [String]
@@ -68,47 +102,29 @@ getMessage = go $ runGetPartial get
             S.Partial p' -> go p'
             S.Done r lo -> leftover lo >> return (Right r)
 
-render :: (Monad m, ToMarkup a) => Conduit a m Builder
-render = do
-    yield $ fromString "<stream>"
-    CL.map (renderMarkupBuilder . toMarkup) =$= unlinesB
-    yield $ fromString "</stream>"
-
-unlinesB :: Monad m => GInfConduit Builder m Builder
-unlinesB = loop True
-  where
-    loop first = do
-        et <- awaitE
-        case et of
-            Left r -> return r
-            Right b -> do
-                unless first $ yield $ fromChar '\n'
-                yield b
-                loop False
-
 lookupCommand :: String -> Manipulator a -> Maybe (Command a)
 lookupCommand name (Manipulator _ _ gcs ccs) =
     Map.lookup name ccs <|> (asCommand <$> Map.lookup name gcs)
   where
     asCommand (GCommand c) = c
 
-manipulator :: ToMarkup a => Manipulator a -> CN.Application IO
+manipulator :: Render a => Manipulator a -> CN.Application IO
 manipulator st0 fromShell0 toShell0 = do
     (fromShell, ()) <- fromShell0 $$+ return ()
     go st0 fromShell toShell0
   where
-    go :: ToMarkup a => Manipulator a -> ResumableSource IO ByteString -> Sink ByteString IO () -> IO ()
+    go :: Render a => Manipulator a -> ResumableSource IO ByteString -> Sink ByteString IO () -> IO ()
     go st@(Manipulator src pipe _ _) fromShell toShell = do
         (fromShell', Right msg) <- fromShell $$++ getMessage
         case msg of
             Output -> do
-                src $= pipe $= render $= builderToByteString $$ toShell
+                src $= pipe $= renderStream $= builderToByteString $$ toShell
                 go st fromShell' toShell
             RunCommand name args -> case lookupCommand name st of
                 Just (Command f) -> case f st args of
                     Right st'@(Manipulator src' pipe' _ _) -> do
                         yield (runPut $ put Success) $$ toShell
-                        src' $= pipe' $= render $= builderToByteString $$ toShell
+                        src' $= pipe' $= renderStream $= builderToByteString $$ toShell
                         go st' fromShell' toShell
                     Left err -> do
                         yield (runPut $ put $ Fail $ show err) $$ toShell
