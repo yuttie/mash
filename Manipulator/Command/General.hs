@@ -9,7 +9,9 @@ import Data.Map (Map)
 import Manipulator.Core
 
 
-gcmdResetPipeline :: Map String (CCommand String) -> GCommand
-gcmdResetPipeline strCmds = GCommand $ \st -> st { manipPipe = awaitForever yield
-                                                 , manipCtxCommands = strCmds
-                                                 }
+gcmdResetPipeline :: Map String (Command String) -> GCommand
+gcmdResetPipeline strCmds = GCommand $ Command $ \st args -> case args of
+    [] -> Right $ st { manipPipe = awaitForever yield
+                     , manipCtxCommands = strCmds
+                     }
+    _ -> Left $ CommandArgumentError args

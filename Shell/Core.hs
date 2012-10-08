@@ -26,9 +26,10 @@ import Prelude hiding (concat)
 import Manipulator
 
 
-data Event = CommandInput String
+data Event = CommandInput String [String]
 
-data UIUpdate = ShowOutput Text
+data UIUpdate = NoUpdate
+              | ShowOutput Text
               | ShowError String
               | Shutdown
 
@@ -72,14 +73,17 @@ shell fromUI0 toUI0 fromManipulator0 toManipulator0 = do
     go fromUI toUI fromManipulator toManipulator = do
         e <- atomically $ readTChan fromUI
         case e of
-            CommandInput "quit" -> atomically $ writeTChan toUI Shutdown
-            CommandInput "show" -> do
+            CommandInput "quit" _ -> atomically $ writeTChan toUI Shutdown
+            CommandInput "show" _ -> do
                 _ <- yield (runPut $ put Output) $$ toManipulator
                 (fromManipulator', t) <- fromManipulator $$++ getStreamText
                 atomically $ writeTChan toUI $ ShowOutput t
                 go fromUI toUI fromManipulator' toManipulator
-            CommandInput c -> do
-                _ <- yield (runPut $ put $ RunCommand c) $$ toManipulator
+            CommandInput "" _ -> do
+                atomically $ writeTChan toUI NoUpdate
+                go fromUI toUI fromManipulator toManipulator
+            CommandInput c args -> do
+                _ <- yield (runPut $ put $ RunCommand c args) $$ toManipulator
                 (fromManipulator', Right res) <- fromManipulator $$++ getResponse
                 case res of
                     Fail err -> do

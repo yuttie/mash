@@ -3,8 +3,9 @@
 {-# LANGUAGE Rank2Types #-}
 module Manipulator.Core
     ( Manipulator(..)
+    , ManipulatorError(..)
     , GCommand(..)
-    , CCommand(..)
+    , Command(..)
     , Message(..)
     , Response(..)
     , ToMarkup(..)
@@ -13,6 +14,7 @@ module Manipulator.Core
 
 import Blaze.ByteString.Builder (Builder)
 import Blaze.ByteString.Builder.Char.Utf8 (fromChar, fromString)
+import Control.Applicative ((<$>), (<|>))
 import Control.Monad (unless)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
@@ -34,15 +36,18 @@ data Manipulator a = Manipulator
     { manipSource :: Source IO String
     , manipPipe :: Conduit String IO a
     , manipCommands :: Map String GCommand
-    , manipCtxCommands :: Map String (CCommand a)
+    , manipCtxCommands :: Map String (Command a)
     }
 
-data GCommand = forall b. ToMarkup b => GCommand (forall a. Manipulator a -> Manipulator b)
+data ManipulatorError = CommandArgumentError [String]
+                      deriving (Show)
 
-data CCommand a = forall b. ToMarkup b => CCommand (Manipulator a -> Manipulator b)
+newtype GCommand = GCommand (forall a. Command a)
+
+data Command a = forall b. ToMarkup b => Command (Manipulator a -> [String] -> Either ManipulatorError (Manipulator b))
 
 data Message = Output
-             | RunCommand String
+             | RunCommand String [String]
              deriving (Generic)
 
 instance Serialize Message
@@ -81,30 +86,33 @@ unlinesB = loop True
                 yield b
                 loop False
 
+lookupCommand :: String -> Manipulator a -> Maybe (Command a)
+lookupCommand name (Manipulator _ _ gcs ccs) =
+    Map.lookup name ccs <|> (asCommand <$> Map.lookup name gcs)
+  where
+    asCommand (GCommand c) = c
+
 manipulator :: ToMarkup a => Manipulator a -> CN.Application IO
 manipulator st0 fromShell0 toShell0 = do
     (fromShell, ()) <- fromShell0 $$+ return ()
     go st0 fromShell toShell0
   where
     go :: ToMarkup a => Manipulator a -> ResumableSource IO ByteString -> Sink ByteString IO () -> IO ()
-    go st@(Manipulator src pipe gcs ccs) fromShell toShell = do
+    go st@(Manipulator src pipe _ _) fromShell toShell = do
         (fromShell', Right msg) <- fromShell $$++ getMessage
         case msg of
             Output -> do
                 src $= pipe $= render $= builderToByteString $$ toShell
                 go st fromShell' toShell
-            RunCommand c -> case Map.lookup c ccs of
-                Just (CCommand f) -> do
-                    yield (runPut $ put Success) $$ toShell
-                    let st'@(Manipulator src' pipe' _ _) = f st
-                    src' $= pipe' $= render $= builderToByteString $$ toShell
-                    go st' fromShell' toShell
-                Nothing -> case Map.lookup c gcs of
-                    Just (GCommand f) -> do
+            RunCommand name args -> case lookupCommand name st of
+                Just (Command f) -> case f st args of
+                    Right st'@(Manipulator src' pipe' _ _) -> do
                         yield (runPut $ put Success) $$ toShell
-                        let st'@(Manipulator src' pipe' _ _) = f st
                         src' $= pipe' $= render $= builderToByteString $$ toShell
                         go st' fromShell' toShell
-                    Nothing -> do
-                        yield (runPut $ put $ Fail $ "Unknown command " ++ show c ++ ".") $$ toShell
+                    Left err -> do
+                        yield (runPut $ put $ Fail $ show err) $$ toShell
                         go st fromShell' toShell
+                Nothing -> do
+                    yield (runPut $ put $ Fail $ "Unknown command " ++ show name ++ ".") $$ toShell
+                    go st fromShell' toShell
