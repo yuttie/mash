@@ -16,7 +16,7 @@ generalCommands :: Map String GCommand
 generalCommands = Map.fromList [("resetpl", gcmdResetPipeline bytesCommands)]
 
 bytesCommands :: Map String (Command Bytes)
-bytesCommands = Map.fromList []
+bytesCommands = Map.fromList [("appendB", cmdAppendBytes)]
 
 initState :: Manipulator Bytes
 initState = Manipulator
