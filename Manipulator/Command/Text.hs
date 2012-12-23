@@ -1,3 +1,4 @@
+{-# LANGUAGE RankNTypes #-}
 module Manipulator.Command.Text
     ( -- Text commands
       cmdAppendText

@@ -21,7 +21,6 @@ import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import Data.Conduit (Source, Conduit, Sink, ResumableSource, GInfConduit, GLSink, ($$), ($$+), ($$++), ($=), await, awaitE, leftover, yield)
 import Data.Conduit.Blaze (builderToByteString)
-import qualified Data.Conduit.Network as CN
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
@@ -108,7 +107,7 @@ lookupCommand name (Manipulator _ _ gcs ccs) =
   where
     asCommand (GCommand c) = c
 
-manipulator :: Render a => Manipulator a -> CN.Application IO
+manipulator :: Render a => Manipulator a -> Source IO ByteString -> Sink ByteString IO () -> IO ()
 manipulator st0 fromShell0 toShell0 = do
     (fromShell, ()) <- fromShell0 $$+ return ()
     go st0 fromShell toShell0

@@ -1,3 +1,4 @@
+{-# LANGUAGE RankNTypes #-}
 module Manipulator.Command.Bytes
     ( -- Bytes commands
       cmdAppendBytes

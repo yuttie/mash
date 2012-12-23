@@ -9,6 +9,8 @@ import Control.Exception.Lifted (bracket, finally)
 import Control.Monad (forever, void, when)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Control (MonadBaseControl, control)
+import Data.ByteString (ByteString)
+import Data.Conduit (Source, Sink)
 import qualified Data.Conduit.Network as CN
 import qualified Network.Socket as NS
 import System.Directory (doesFileExist, removeFile)
@@ -20,7 +22,7 @@ deleteFile fp = do
     when exist $
         removeFile fp
 
-runServer :: (MonadIO m, MonadBaseControl IO m) => FilePath -> CN.Application m -> m ()
+runServer :: (MonadIO m, MonadBaseControl IO m) => FilePath -> (Source m ByteString -> Sink ByteString m () -> m ()) -> m ()
 runServer fp app = bracket
     (liftIO prepareSocket)
     (liftIO . NS.sClose)
@@ -40,7 +42,7 @@ runServer fp app = bracket
             _ <- forkIO $ void $ run (app src sink) `finally` NS.sClose sock
             run $ return ()
 
-runClient :: (MonadIO m, MonadBaseControl IO m) => FilePath -> CN.Application m -> m ()
+runClient :: (MonadIO m, MonadBaseControl IO m) => FilePath -> (Source m ByteString -> Sink ByteString m () -> m ()) -> m ()
 runClient fp app = bracket
     (liftIO prepareSocket)
     (liftIO . NS.sClose)

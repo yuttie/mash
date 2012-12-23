@@ -10,10 +10,9 @@ import Control.Concurrent.STM (TChan, atomically, readTChan, writeTChan)
 import Data.Attoparsec.ByteString.Char8 (string)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
-import Data.Conduit (Sink, GLSink, MonadThrow, ($$), ($$+), ($$++), (=$), await, leftover, yield)
+import Data.Conduit (Source, Sink, GLSink, MonadThrow, ($$), ($$+), ($$++), (=$), await, leftover, yield)
 import qualified Data.Conduit.Attoparsec as CA
 import qualified Data.Conduit.List as CL
-import qualified Data.Conduit.Network as CN
 import qualified Data.Conduit.Text as CT
 import Data.Maybe (fromMaybe)
 import Data.Serialize (Serialize, get, put, runGetPartial, runPut)
@@ -65,7 +64,7 @@ getStreamText = do
               where
                 (x, y) = B.breakSubstring endTag bs
 
-shell :: TChan Event -> TChan UIUpdate -> CN.Application IO
+shell :: TChan Event -> TChan UIUpdate -> Source IO ByteString -> Sink ByteString IO () -> IO ()
 shell fromUI0 toUI0 fromManipulator0 toManipulator0 = do
     (fromManipulator, ()) <- fromManipulator0 $$+ return ()
     go fromUI0 toUI0 fromManipulator toManipulator0
