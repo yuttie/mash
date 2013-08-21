@@ -10,7 +10,7 @@ import Control.Concurrent.STM (TChan, atomically, readTChan, writeTChan)
 import Data.Attoparsec.ByteString.Char8 (string)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
-import Data.Conduit (Source, Sink, GLSink, MonadThrow, ($$), ($$+), ($$++), (=$), await, leftover, yield)
+import Data.Conduit (Source, Sink, Consumer, MonadThrow, ($$), ($$+), ($$++), (=$), await, leftover, yield)
 import qualified Data.Conduit.Attoparsec as CA
 import qualified Data.Conduit.List as CL
 import qualified Data.Conduit.Text as CT
@@ -32,7 +32,7 @@ data UIUpdate = NoUpdate
               | ShowError String
               | Shutdown
 
-getResponse :: Monad m => GLSink ByteString m (Either String Response)
+getResponse :: Monad m => Consumer ByteString m (Either String Response)
 getResponse = go $ runGetPartial get
   where
     go p = do

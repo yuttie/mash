@@ -6,7 +6,7 @@ module Manipulator.Command.Bytes
     ) where
 
 import qualified Data.ByteString as B
-import Data.Conduit (GInfConduit, (=$=), awaitForever, yield)
+import Data.Conduit (Conduit, (=$=), awaitForever, yield)
 import qualified Data.Conduit.List as CL
 import qualified Data.Conduit.Text as CT
 import Data.Map (Map)
@@ -18,7 +18,7 @@ import Manipulator.Core
 import Manipulator.Stream.Text ()
 
 
-append :: Monad m => a -> GInfConduit a m a
+append :: Monad m => a -> Conduit a m a
 append x = do
     r <- awaitForever yield
     yield x

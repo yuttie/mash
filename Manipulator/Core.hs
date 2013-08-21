@@ -19,7 +19,7 @@ import Blaze.ByteString.Builder.Char.Utf8 (fromChar, fromString)
 import Control.Applicative ((<$>), (<|>))
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
-import Data.Conduit (Source, Conduit, Sink, ResumableSource, GInfConduit, GLSink, ($$), ($$+), ($$++), ($=), await, awaitE, leftover, yield)
+import Data.Conduit (Source, Conduit, Sink, ResumableSource, Consumer, ($$), ($$+), ($$++), ($=), await, leftover, yield)
 import Data.Conduit.Blaze (builderToByteString)
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -46,9 +46,9 @@ newtype GCommand = GCommand (forall a. Command a)
 data Command a = forall b. Render b => Command (Manipulator a -> [String] -> Either ManipulatorError (Manipulator b))
 
 class Render a where
-    render :: Monad m => GInfConduit a m Builder
+    render :: Monad m => Conduit a m Builder
 
-renderStream :: (Render a, Monad m) => GInfConduit a m Builder
+renderStream :: (Render a, Monad m) => Conduit a m Builder
 renderStream = do
     yield $ fromString "<stream>"
     r <- render
@@ -64,16 +64,16 @@ instance Render Bytes where
     render = go mempty B.empty
       where
         go sep bs
-            | B.length bs < 16 = awaitE >>= either
+            | B.length bs < 16 = await >>= maybe
                 (close sep bs)
                 (go sep . (bs <>) . unbytes)
             | otherwise = do
                 let (x, y) = B.splitAt 16 bs
                 yield $ sep <> fromBytes x
                 go (fromChar '\n') y
-        close sep bs r
-            | B.null bs = return r
-            | otherwise = yield (sep <> fromBytes bs) >> return r
+        close sep bs
+            | B.null bs = return ()
+            | otherwise = yield (sep <> fromBytes bs) >> return ()
         fromBytes bs = B.foldl (\a b -> a <> fromChar ' ' <> fromByte b) (fromByte $ B.head bs) (B.tail bs)
         fromByte b
             | b < 0x10 = fromChar '0' <> fromString (showHex b "")
@@ -91,7 +91,7 @@ data Response = Success
 
 instance Serialize Response
 
-getMessage :: Monad m => GLSink ByteString m (Either String Message)
+getMessage :: Monad m => Consumer ByteString m (Either String Message)
 getMessage = go $ runGetPartial get
   where
     go p = do

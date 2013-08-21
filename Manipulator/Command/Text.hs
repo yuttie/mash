@@ -4,14 +4,14 @@ module Manipulator.Command.Text
       cmdAppendText
     ) where
 
-import Data.Conduit (GInfConduit, (=$=), awaitForever, yield)
+import Data.Conduit (Conduit, (=$=), awaitForever, yield)
 import Data.Text (Text, pack)
 
 import Manipulator.Core
 import Manipulator.Stream.Text ()
 
 
-append :: Monad m => a -> GInfConduit a m a
+append :: Monad m => a -> Conduit a m a
 append x = do
     r <- awaitForever yield
     yield x
