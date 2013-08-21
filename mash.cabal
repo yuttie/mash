@@ -5,6 +5,7 @@ name:                mash
 version:             0.1.0.0
 synopsis:            Streaming-based data manipulation shell
 -- description:         
+homepage:            https://github.com/yuttie/mash
 license:             BSD3
 license-file:        LICENSE
 author:              Yuta Taniguchi
