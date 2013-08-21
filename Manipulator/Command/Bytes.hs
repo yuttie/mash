@@ -5,17 +5,18 @@ module Manipulator.Command.Bytes
     , cmdDecodeUtf8
     ) where
 
-import qualified Data.ByteString as B
-import Data.Conduit (Conduit, MonadThrow, (=$=), awaitForever, yield)
-import qualified Data.Conduit.List as CL
-import qualified Data.Conduit.Text as CT
-import Data.Map (Map)
-import Data.Maybe (listToMaybe)
-import Data.Text (Text)
-import Data.Word (Word8)
+import qualified Data.ByteString         as B
+import           Data.Conduit            (Conduit, MonadThrow, awaitForever,
+                                          yield, (=$=))
+import qualified Data.Conduit.List       as CL
+import qualified Data.Conduit.Text       as CT
+import           Data.Map                (Map)
+import           Data.Maybe              (listToMaybe)
+import           Data.Text               (Text)
+import           Data.Word               (Word8)
 
-import Manipulator.Core
-import Manipulator.Stream.Text ()
+import           Manipulator.Core
+import           Manipulator.Stream.Text ()
 
 
 append :: Monad m => a -> Conduit a m a

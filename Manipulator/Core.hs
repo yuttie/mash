@@ -1,6 +1,6 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric             #-}
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE Rank2Types                #-}
 module Manipulator.Core
     ( Manipulator(..)
     , ManipulatorError(..)
@@ -14,28 +14,33 @@ module Manipulator.Core
     , manipulator
     ) where
 
-import Blaze.ByteString.Builder (Builder)
-import Blaze.ByteString.Builder.Char.Utf8 (fromChar, fromString)
-import Control.Applicative ((<$>), (<|>))
-import Control.Monad.Trans.Resource (MonadUnsafeIO)
-import Data.ByteString (ByteString)
-import qualified Data.ByteString as B
-import Data.Conduit (Source, Conduit, Sink, ResumableSource, Consumer, ($$), ($$+), ($$++), ($=), await, leftover, yield)
-import Data.Conduit.Blaze (builderToByteString)
-import Data.Map (Map)
-import qualified Data.Map as Map
-import Data.Maybe (fromMaybe)
-import Data.Monoid ((<>), mempty)
-import Data.Serialize (Serialize, get, put, runGetPartial, runPut)
-import qualified Data.Serialize as S
-import Numeric (showHex)
-import GHC.Generics
+import           Blaze.ByteString.Builder           (Builder)
+import           Blaze.ByteString.Builder.Char.Utf8 (fromChar, fromString)
+import           Control.Applicative                ((<$>), (<|>))
+import           Control.Monad.Trans.Resource       (MonadUnsafeIO)
+import           Data.ByteString                    (ByteString)
+import qualified Data.ByteString                    as B
+import           Data.Conduit                       (Conduit, Consumer,
+                                                     ResumableSource, Sink,
+                                                     Source, await, leftover,
+                                                     yield, ($$), ($$+), ($$++),
+                                                     ($=))
+import           Data.Conduit.Blaze                 (builderToByteString)
+import           Data.Map                           (Map)
+import qualified Data.Map                           as Map
+import           Data.Maybe                         (fromMaybe)
+import           Data.Monoid                        (mempty, (<>))
+import           Data.Serialize                     (Serialize, get, put,
+                                                     runGetPartial, runPut)
+import qualified Data.Serialize                     as S
+import           GHC.Generics
+import           Numeric                            (showHex)
 
 
 data Manipulator m a = Manipulator
-    { manipSource :: Source m Bytes
-    , manipPipe :: Conduit Bytes m a
-    , manipCommands :: Map String (GCommand m)
+    { manipSource      :: Source m Bytes
+    , manipPipe        :: Conduit Bytes m a
+    , manipCommands    :: Map String (GCommand m)
     , manipCtxCommands :: Map String (Command m a)
     }
 

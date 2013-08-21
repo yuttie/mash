@@ -2,17 +2,17 @@ module Shell.UI.Vty
     ( start
     ) where
 
-import Control.Applicative
-import Control.Concurrent
-import Control.Concurrent.STM
-import Control.Monad
-import qualified Data.Text as T
-import Graphics.Vty
-import Graphics.Vty.Widgets.All
+import           Control.Applicative
+import           Control.Concurrent
+import           Control.Concurrent.STM
+import           Control.Monad
+import qualified Data.Text                as T
+import           Graphics.Vty
+import           Graphics.Vty.Widgets.All
 
-import Manipulator
-import Mash.Core
-import Shell.Core
+import           Manipulator
+import           Mash.Core
+import           Shell.Core
 
 
 start :: Render a => Manipulator a -> IO ()

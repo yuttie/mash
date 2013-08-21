@@ -2,18 +2,19 @@ module Shell.UI.Commandline
     ( start
     ) where
 
-import Control.Applicative ((<$>))
-import Control.Concurrent (forkIO)
-import Control.Concurrent.STM (atomically, newTChanIO, readTChan, writeTChan)
-import Control.Monad (forever)
-import Control.Monad.Trans.Resource (ResourceT, runResourceT)
-import qualified Data.Text.IO as T
-import System.Exit (exitSuccess)
-import System.IO (hFlush, stdout)
+import           Control.Applicative          ((<$>))
+import           Control.Concurrent           (forkIO)
+import           Control.Concurrent.STM       (atomically, newTChanIO,
+                                               readTChan, writeTChan)
+import           Control.Monad                (forever)
+import           Control.Monad.Trans.Resource (ResourceT, runResourceT)
+import qualified Data.Text.IO                 as T
+import           System.Exit                  (exitSuccess)
+import           System.IO                    (hFlush, stdout)
 
-import Manipulator
-import Mash.Core
-import Shell.Core
+import           Manipulator
+import           Mash.Core
+import           Shell.Core
 
 
 start :: Render a => Manipulator (ResourceT IO) a -> IO ()

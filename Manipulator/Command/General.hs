@@ -4,12 +4,12 @@ module Manipulator.Command.General
     , gcmdFileSource
     ) where
 
-import Data.Conduit (MonadResource, (=$=), awaitForever, yield)
+import           Data.Conduit        (MonadResource, awaitForever, yield, (=$=))
 import qualified Data.Conduit.Binary as CB
-import qualified Data.Conduit.List as CL
-import Data.Map (Map)
+import qualified Data.Conduit.List   as CL
+import           Data.Map            (Map)
 
-import Manipulator.Core
+import           Manipulator.Core
 
 
 gcmdResetPipeline :: Monad m => Map String (Command m Bytes) -> GCommand m

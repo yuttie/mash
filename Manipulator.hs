@@ -5,7 +5,7 @@ module Manipulator
     , module Manipulator.Command.Text
     ) where
 
-import Manipulator.Core
-import Manipulator.Command.General
-import Manipulator.Command.Bytes
-import Manipulator.Command.Text
+import           Manipulator.Command.Bytes
+import           Manipulator.Command.General
+import           Manipulator.Command.Text
+import           Manipulator.Core

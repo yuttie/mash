@@ -1,15 +1,15 @@
 module Main where
 
-import qualified Data.ByteString as B
-import Data.Conduit
-import qualified Data.Conduit.List as CL
-import Data.Map (Map)
-import qualified Data.Map as Map
-import Data.Text (Text)
-import Data.Word (Word8)
+import qualified Data.ByteString      as B
+import           Data.Conduit
+import qualified Data.Conduit.List    as CL
+import           Data.Map             (Map)
+import qualified Data.Map             as Map
+import           Data.Text            (Text)
+import           Data.Word            (Word8)
 
-import Manipulator
-import Shell.UI.Commandline
+import           Manipulator
+import           Shell.UI.Commandline
 
 
 -- Commands

@@ -5,24 +5,29 @@ module Shell.Core
     , shell
     ) where
 
-import Control.Applicative ((<$>))
-import Control.Concurrent.STM (TChan, atomically, readTChan, writeTChan)
-import Data.Attoparsec.ByteString.Char8 (string)
-import Data.ByteString (ByteString)
-import qualified Data.ByteString as B
-import Data.Conduit (Source, Sink, Consumer, MonadThrow, ($$), ($$+), ($$++), (=$), await, leftover, yield)
-import qualified Data.Conduit.Attoparsec as CA
-import qualified Data.Conduit.List as CL
-import qualified Data.Conduit.Text as CT
-import Data.Maybe (fromMaybe)
-import Data.Serialize (Serialize, get, put, runGetPartial, runPut)
-import qualified Data.Serialize as S
-import Data.String (IsString)
-import Data.Text (Text)
-import qualified Data.Text as T
-import Prelude hiding (concat)
+import           Control.Applicative              ((<$>))
+import           Control.Concurrent.STM           (TChan, atomically, readTChan,
+                                                   writeTChan)
+import           Data.Attoparsec.ByteString.Char8 (string)
+import           Data.ByteString                  (ByteString)
+import qualified Data.ByteString                  as B
+import           Data.Conduit                     (Consumer, MonadThrow, Sink,
+                                                   Source, await, leftover,
+                                                   yield, ($$), ($$+), ($$++),
+                                                   (=$))
+import qualified Data.Conduit.Attoparsec          as CA
+import qualified Data.Conduit.List                as CL
+import qualified Data.Conduit.Text                as CT
+import           Data.Maybe                       (fromMaybe)
+import           Data.Serialize                   (Serialize, get, put,
+                                                   runGetPartial, runPut)
+import qualified Data.Serialize                   as S
+import           Data.String                      (IsString)
+import           Data.Text                        (Text)
+import qualified Data.Text                        as T
+import           Prelude                          hiding (concat)
 
-import Manipulator
+import           Manipulator
 
 
 data Event = CommandInput String [String]

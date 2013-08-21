@@ -4,11 +4,11 @@ module Manipulator.Command.Text
       cmdAppendText
     ) where
 
-import Data.Conduit (Conduit, (=$=), awaitForever, yield)
-import Data.Text (Text, pack)
+import           Data.Conduit            (Conduit, awaitForever, yield, (=$=))
+import           Data.Text               (Text, pack)
 
-import Manipulator.Core
-import Manipulator.Stream.Text ()
+import           Manipulator.Core
+import           Manipulator.Stream.Text ()
 
 
 append :: Monad m => a -> Conduit a m a
