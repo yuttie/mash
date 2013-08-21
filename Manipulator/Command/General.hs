@@ -1,6 +1,7 @@
 module Manipulator.Command.General
     ( -- General commands
       gcmdResetPipeline
+    , gcmdFileSource
     ) where
 
 import Data.Conduit (MonadResource, (=$=), awaitForever, yield)
