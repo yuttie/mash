@@ -13,16 +13,16 @@ import Shell.UI.Commandline
 
 
 -- Commands
-generalCommands :: Map String GCommand
+generalCommands :: MonadThrow m => Map String (GCommand m)
 generalCommands = Map.fromList [("resetpl", gcmdResetPipeline bytesCommands)]
 
-bytesCommands :: Map String (Command Bytes)
+bytesCommands :: MonadThrow m => Map String (Command m Bytes)
 bytesCommands = Map.fromList [("appendB", cmdAppendBytes), ("decode", cmdDecodeUtf8 textCommands)]
 
-textCommands :: Map String (Command Text)
+textCommands :: Monad m => Map String (Command m Text)
 textCommands = Map.fromList [("appendT", cmdAppendText)]
 
-initState :: Manipulator Bytes
+initState :: MonadThrow m => Manipulator m Bytes
 initState = Manipulator
     { manipSource = CL.sourceList [Bytes $ B.pack ([0..127]::[Word8])]
     , manipPipe = awaitForever yield

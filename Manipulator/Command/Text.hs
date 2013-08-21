@@ -17,7 +17,7 @@ append x = do
     yield x
     return r
 
-cmdAppendText :: Command Text
+cmdAppendText :: Monad m => Command m Text
 cmdAppendText = Command $ \st args -> case args of
     [s] -> Right $ st { manipPipe = manipPipe st =$= append (pack s) }
     _ -> Left $ CommandArgumentError args

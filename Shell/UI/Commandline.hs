@@ -6,6 +6,7 @@ import Control.Applicative ((<$>))
 import Control.Concurrent (forkIO)
 import Control.Concurrent.STM (atomically, newTChanIO, readTChan, writeTChan)
 import Control.Monad (forever)
+import Control.Monad.Trans.Resource (ResourceT, runResourceT)
 import qualified Data.Text.IO as T
 import System.Exit (exitSuccess)
 import System.IO (hFlush, stdout)
@@ -15,13 +16,13 @@ import Mash.Core
 import Shell.Core
 
 
-start :: Render a => Manipulator a -> IO ()
+start :: Render a => Manipulator (ResourceT IO) a -> IO ()
 start initState = do
     fromShell <- newTChanIO
     toShell <- newTChanIO
 
-    _ <- forkIO $ runServer "/tmp/mash_test" $ manipulator initState
-    _ <- forkIO $ runClient "/tmp/mash_test" $ shell toShell fromShell
+    _ <- forkIO $ runResourceT $ runServer "/tmp/mash_test" $ manipulator initState
+    _ <- forkIO $                runClient "/tmp/mash_test" $ shell toShell fromShell
 
     forever $ do
         -- prompt

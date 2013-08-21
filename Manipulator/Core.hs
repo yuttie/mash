@@ -17,6 +17,7 @@ module Manipulator.Core
 import Blaze.ByteString.Builder (Builder)
 import Blaze.ByteString.Builder.Char.Utf8 (fromChar, fromString)
 import Control.Applicative ((<$>), (<|>))
+import Control.Monad.Trans.Resource (MonadUnsafeIO)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import Data.Conduit (Source, Conduit, Sink, ResumableSource, Consumer, ($$), ($$+), ($$++), ($=), await, leftover, yield)
@@ -31,19 +32,19 @@ import Numeric (showHex)
 import GHC.Generics
 
 
-data Manipulator a = Manipulator
-    { manipSource :: Source IO Bytes
-    , manipPipe :: Conduit Bytes IO a
-    , manipCommands :: Map String GCommand
-    , manipCtxCommands :: Map String (Command a)
+data Manipulator m a = Manipulator
+    { manipSource :: Source m Bytes
+    , manipPipe :: Conduit Bytes m a
+    , manipCommands :: Map String (GCommand m)
+    , manipCtxCommands :: Map String (Command m a)
     }
 
 data ManipulatorError = CommandArgumentError [String]
                       deriving (Show)
 
-newtype GCommand = GCommand (forall a. Command a)
+newtype GCommand m = GCommand (forall a. Render a => Command m a)
 
-data Command a = forall b. Render b => Command (Manipulator a -> [String] -> Either ManipulatorError (Manipulator b))
+data Command m a = forall b. Render b => Command (Manipulator m a -> [String] -> Either ManipulatorError (Manipulator m b))
 
 class Render a where
     render :: Monad m => Conduit a m Builder
@@ -101,18 +102,18 @@ getMessage = go $ runGetPartial get
             S.Partial p' -> go p'
             S.Done r lo -> leftover lo >> return (Right r)
 
-lookupCommand :: String -> Manipulator a -> Maybe (Command a)
+lookupCommand :: Render a => String -> Manipulator m a -> Maybe (Command m a)
 lookupCommand name (Manipulator _ _ gcs ccs) =
     Map.lookup name ccs <|> (asCommand <$> Map.lookup name gcs)
   where
     asCommand (GCommand c) = c
 
-manipulator :: Render a => Manipulator a -> Source IO ByteString -> Sink ByteString IO () -> IO ()
+manipulator :: (MonadUnsafeIO m, Render a) => Manipulator m a -> Source m ByteString -> Sink ByteString m () -> m ()
 manipulator st0 fromShell0 toShell0 = do
     (fromShell, ()) <- fromShell0 $$+ return ()
     go st0 fromShell toShell0
   where
-    go :: Render a => Manipulator a -> ResumableSource IO ByteString -> Sink ByteString IO () -> IO ()
+    go :: (MonadUnsafeIO m, Render a) => Manipulator m a -> ResumableSource m ByteString -> Sink ByteString m () -> m ()
     go st@(Manipulator src pipe _ _) fromShell toShell = do
         (fromShell', Right msg) <- fromShell $$++ getMessage
         case msg of

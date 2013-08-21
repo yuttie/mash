@@ -6,7 +6,7 @@ module Manipulator.Command.Bytes
     ) where
 
 import qualified Data.ByteString as B
-import Data.Conduit (Conduit, (=$=), awaitForever, yield)
+import Data.Conduit (Conduit, MonadThrow, (=$=), awaitForever, yield)
 import qualified Data.Conduit.List as CL
 import qualified Data.Conduit.Text as CT
 import Data.Map (Map)
@@ -29,13 +29,13 @@ maybeRead s = case listToMaybe $ reads s of
     Just (x, []) -> Just x
     _ -> Nothing
 
-cmdAppendBytes :: Command Bytes
+cmdAppendBytes :: Monad m => Command m Bytes
 cmdAppendBytes = Command $ \st args ->
     case mapM maybeRead args :: Maybe [Word8] of
         Just bs -> Right $ st { manipPipe = manipPipe st =$= append (Bytes $ B.pack bs) }
         Nothing -> Left $ CommandArgumentError args
 
-cmdDecodeUtf8 :: Map String (Command Text) -> Command Bytes
+cmdDecodeUtf8 :: MonadThrow m => Map String (Command m Text) -> Command m Bytes
 cmdDecodeUtf8 textCmds = Command $ \st args -> case args of
     [] -> Right $ st { manipPipe = manipPipe st =$= CL.map unbytes =$= CT.decode CT.utf8
                      , manipCtxCommands = textCmds
