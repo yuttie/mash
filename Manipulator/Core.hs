@@ -103,7 +103,7 @@ getMessage = go $ runGetPartial get
     go p = do
         mbs <- await
         case p $ fromMaybe B.empty mbs of
-            S.Fail err -> return $ Left err
+            S.Fail err _ -> return $ Left err
             S.Partial p' -> go p'
             S.Done r lo -> leftover lo >> return (Right r)
 
